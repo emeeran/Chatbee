@@ -5,11 +5,8 @@ from openai import OpenAI
 import time
 import os
 
-MODEL_OPTIONS = [
-    "gpt-4o-mini",
-    "gpt-4o",
-    "gpt-3-5"
-]
+# Constants
+MODEL_OPTIONS = ["gpt-4o-mini", "gpt-4o", "gpt-3-5"]
 PERSONAS_OPTIONS = {
     "Analytical": "Provide detailed, logical analyses.",
     "Business_Consultant": "Offer strategic business advice and insights.",
@@ -17,16 +14,11 @@ PERSONAS_OPTIONS = {
     "Code_Reviewer": "Analyze code snippets for best practices and potential bugs.",
     "Concise": "Give brief, to-the-point responses.",
     "Creative": "Offer imaginative and original responses.",
-    "Default": "Act as a helpful assistant.",# Default persona
+    "Default": "Act as a helpful assistant.",  # Default persona
 }
-
-TONE_OPTIONS = [
-    "Professional",
-    "Casual",
-    "Friendly",
-    "Formal",
-    "Humorous",
-]
+TONE_OPTIONS = ["Professional", "Casual", "Friendly", "Formal", "Humorous"]
+DEFAULT_MODEL = "gpt-4o-mini"
+DEFAULT_PERSONA = "Default"
 
 # Initialize OpenAI client
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
@@ -51,11 +43,46 @@ def get_openai_response(messages, model, max_tokens, temperature):
     )
     return response.choices[0].message.content
 
+# Process user input
+def process_user_input(prompt):
+    # Add user message to chat history
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # Prepare messages for API call
+    messages = [
+        {"role": "system", "content": f"You are acting as a {persona_key} persona. {persona}\n\nTone: {tone}"},
+        *st.session_state.messages
+    ]
+
+    # Get AI response
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
+        full_response = ""
+        response = get_openai_response(messages, model, max_tokens, temperature)
+        full_response += response
+        message_placeholder.markdown(full_response + "▌")
+        message_placeholder.markdown(full_response)
+
+    # Add AI response to chat history
+    st.session_state.messages.append({"role": "assistant", "content": full_response})
+
+    # Save to database
+    conn = init_db()
+    c = conn.cursor()
+    c.execute("INSERT INTO messages VALUES (?, ?, ?)",
+              ("user", prompt, time.time()))
+    c.execute("INSERT INTO messages VALUES (?, ?, ?)",
+              ("assistant", full_response, time.time()))
+    conn.commit()
+    conn.close()
+
 # Sidebar configuration
 st.sidebar.title("⚙️ Configuration")
 
-model = st.sidebar.selectbox("Select Model", MODEL_OPTIONS)
-persona_key = st.sidebar.selectbox("Select Persona", list(PERSONAS_OPTIONS.keys()))
+model = st.sidebar.selectbox("Select Model", MODEL_OPTIONS, index=MODEL_OPTIONS.index(DEFAULT_MODEL))
+persona_key = st.sidebar.selectbox("Select Persona", list(PERSONAS_OPTIONS.keys()), index=list(PERSONAS_OPTIONS.keys()).index(DEFAULT_PERSONA))
 persona = PERSONAS_OPTIONS[persona_key]
 tone = st.sidebar.selectbox("Select Tone", TONE_OPTIONS)
 
@@ -83,35 +110,4 @@ for message in st.session_state.messages:
 
 # Chat input
 if prompt := st.chat_input("Hello, how can I help you?"):
-    # Add user message to chat history
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    # Prepare messages for API call
-    messages = [
-        {"role": "system", "content": f"You are acting as a {persona_key} persona. {persona}\n\nTone: {tone}"},
-        *st.session_state.messages
-    ]
-
-    # Get AI response
-    with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        full_response = ""
-        for response in get_openai_response(messages, model, max_tokens, temperature):
-            full_response += response
-            message_placeholder.markdown(full_response + "▌")
-        message_placeholder.markdown(full_response)
-    
-    # Add AI response to chat history
-    st.session_state.messages.append({"role": "assistant", "content": full_response})
-
-    # Save to database
-    conn = init_db()
-    c = conn.cursor()
-    c.execute("INSERT INTO messages VALUES (?, ?, ?)", 
-              ("user", prompt, time.time()))
-    c.execute("INSERT INTO messages VALUES (?, ?, ?)", 
-              ("assistant", full_response, time.time()))
-    conn.commit()
-    conn.close()
+    process_user_input(prompt)
