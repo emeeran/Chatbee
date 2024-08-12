@@ -5,6 +5,8 @@ from openai import OpenAI
 import time
 import os
 
+page_title = "Bee🐝 Chat"
+
 # Constants
 MODEL_OPTIONS = ["gpt-4o-mini", "gpt-4o", "gpt-3-5"]
 PERSONAS_OPTIONS = {
@@ -90,14 +92,13 @@ with st.sidebar.expander("Advanced Settings"):
     max_tokens = st.slider("Max Tokens", min_value=50, max_value=2000, value=150, step=50)
     temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, value=0.7, step=0.1)
 
-# Move Clear Chat History button to the bottom of the sidebar
 st.sidebar.markdown("---")  # Add a separator
 if st.sidebar.button("Clear Chat History"):
     st.session_state.messages = []
     st.rerun()
 
 # Main chat window
-st.title("Bee Chat")
+st.title("Bee🐝 Chat")
 
 # Initialize session state
 if 'messages' not in st.session_state:
