@@ -1,0 +1,9 @@
+aiohttp
+openai
+streamlit
+pillow
+pytesseract
+python-dotenv
+unstructured
+pypdf
+pdfkit 

@@ -1,0 +1,117 @@
+import streamlit as st
+import sqlite3
+import openai
+from openai import OpenAI
+import time
+import os
+
+MODEL_OPTIONS = [
+    "gpt-4o-mini",
+    "gpt-4o",
+    "gpt-3-5"
+]
+PERSONAS_OPTIONS = {
+    "Analytical": "Provide detailed, logical analyses.",
+    "Business_Consultant": "Offer strategic business advice and insights.",
+    "Chef": "Share cooking tips, recipes, and culinary advice.",
+    "Code_Reviewer": "Analyze code snippets for best practices and potential bugs.",
+    "Concise": "Give brief, to-the-point responses.",
+    "Creative": "Offer imaginative and original responses.",
+    "Default": "Act as a helpful assistant.",# Default persona
+}
+
+TONE_OPTIONS = [
+    "Professional",
+    "Casual",
+    "Friendly",
+    "Formal",
+    "Humorous",
+]
+
+# Initialize OpenAI client
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+# Database setup
+def init_db():
+    conn = sqlite3.connect('chat_history.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS messages
+                 (role TEXT, content TEXT, timestamp REAL)''')
+    conn.commit()
+    return conn
+
+# Cache setup
+@st.cache_data(ttl=3600)
+def get_openai_response(messages, model, max_tokens, temperature):
+    response = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        max_tokens=max_tokens,
+        temperature=temperature
+    )
+    return response.choices[0].message.content
+
+# Sidebar configuration
+st.sidebar.title("⚙️ Configuration")
+
+model = st.sidebar.selectbox("Select Model", MODEL_OPTIONS)
+persona_key = st.sidebar.selectbox("Select Persona", list(PERSONAS_OPTIONS.keys()))
+persona = PERSONAS_OPTIONS[persona_key]
+tone = st.sidebar.selectbox("Select Tone", TONE_OPTIONS)
+
+with st.sidebar.expander("Advanced Settings"):
+    max_tokens = st.slider("Max Tokens", min_value=50, max_value=2000, value=150, step=50)
+    temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, value=0.7, step=0.1)
+
+# Move Clear Chat History button to the bottom of the sidebar
+st.sidebar.markdown("---")  # Add a separator
+if st.sidebar.button("Clear Chat History"):
+    st.session_state.messages = []
+    st.rerun()
+
+# Main chat window
+st.title("Bee Chat")
+
+# Initialize session state
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
+
+# Display chat history
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# Chat input
+if prompt := st.chat_input("Hello, how can I help you?"):
+    # Add user message to chat history
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # Prepare messages for API call
+    messages = [
+        {"role": "system", "content": f"You are acting as a {persona_key} persona. {persona}\n\nTone: {tone}"},
+        *st.session_state.messages
+    ]
+
+    # Get AI response
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
+        full_response = ""
+        for response in get_openai_response(messages, model, max_tokens, temperature):
+            full_response += response
+            message_placeholder.markdown(full_response + "▌")
+        message_placeholder.markdown(full_response)
+    
+    # Add AI response to chat history
+    st.session_state.messages.append({"role": "assistant", "content": full_response})
+
+    # Save to database
+    conn = init_db()
+    c = conn.cursor()
+    c.execute("INSERT INTO messages VALUES (?, ?, ?)", 
+              ("user", prompt, time.time()))
+    c.execute("INSERT INTO messages VALUES (?, ?, ?)", 
+              ("assistant", full_response, time.time()))
+    conn.commit()
+    conn.close()
