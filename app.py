@@ -1,6 +1,3 @@
-# "Chatbee🐝 "
-
-
 import streamlit as st
 import sqlite3
 import openai
@@ -34,9 +31,9 @@ def init_db():
                  (role TEXT, content TEXT, timestamp REAL)''')
     conn.commit()
     return conn
-st.set_page_config(
-        page_title="Chatbee🐝",
-        page_icon="🐝",)
+
+st.set_page_config(page_title="Chatbee🐝", page_icon="🐝")
+
 # Cache setup
 @st.cache_data(ttl=3600)
 def get_openai_response(messages, model, max_tokens, temperature):
@@ -76,47 +73,32 @@ def process_user_input(prompt):
     # Save to database
     conn = init_db()
     c = conn.cursor()
-    c.execute("INSERT INTO messages VALUES (?, ?, ?)",
-              ("user", prompt, time.time()))
-    c.execute("INSERT INTO messages VALUES (?, ?, ?)",
-              ("assistant", full_response, time.time()))
+    c.execute("INSERT INTO messages VALUES (?, ?, ?)", ("user", prompt, time.time()))
+    c.execute("INSERT INTO messages VALUES (?, ?, ?)", ("assistant", full_response, time.time()))
     conn.commit()
     conn.close()
 
 # Sidebar configuration
-# st.sidebar.title("⚙️ Configuration")
-
 with st.sidebar:
-        st.markdown(
-            "<h3 style='text-align: center;'>⚙️ Configurations</h3>",
-            unsafe_allow_html=True,
-        )
+    st.markdown("<h3 style='text-align: center;'>⚙️ Configurations</h3>", unsafe_allow_html=True)
 
-model = st.sidebar.selectbox(" Model", MODEL_OPTIONS, index=MODEL_OPTIONS.index(DEFAULT_MODEL))
-persona_key = st.sidebar.selectbox(" Persona", list(PERSONAS_OPTIONS.keys()), index=list(PERSONAS_OPTIONS.keys()).index(DEFAULT_PERSONA))
-persona = PERSONAS_OPTIONS[persona_key]
-tone = st.sidebar.selectbox(" Tone", TONE_OPTIONS)
+    model = st.sidebar.selectbox("Model", MODEL_OPTIONS, index=MODEL_OPTIONS.index(DEFAULT_MODEL))
+    persona_key = st.sidebar.selectbox("Persona", list(PERSONAS_OPTIONS.keys()), index=list(PERSONAS_OPTIONS.keys()).index(DEFAULT_PERSONA))
+    persona = PERSONAS_OPTIONS[persona_key]
+    tone = st.sidebar.selectbox("Tone", TONE_OPTIONS)
 
-with st.sidebar.expander("Advanced Settings"):
-    max_tokens = st.slider("Max Tokens", min_value=50, max_value=2000, value=150, step=50)
-    temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, value=0.7, step=0.1)
+    with st.sidebar.expander("Advanced Settings"):
+        max_tokens = st.slider("Max Tokens", min_value=50, max_value=2000, value=150, step=50)
+        temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, value=0.7, step=0.1)
 
-# Move Clear Chat History button to the bottom of the sidebar
-st.sidebar.markdown("---")  # Add a separator
-if st.sidebar.button("Clear Chat History"):
-    st.session_state.messages = []
-    st.rerun()
+    st.sidebar.markdown("---")  # Add a separator
+    if st.sidebar.button("Clear Chat History"):
+        st.session_state.messages = []
+        st.rerun()
 
 # Main chat window
-st.markdown(
-        '<h1 style="text-align: center; color: #6ca395;">Chatbee🐝</h1>',
-        unsafe_allow_html=True,
-    )
-st.markdown(
-        '<p style="text-align: center; color: #FF0000;">always at your service</p>',
-        unsafe_allow_html=True,
-    )
-
+st.markdown('<h1 style="text-align: center; color: #6ca395;">Chatbee🐝</h1>', unsafe_allow_html=True)
+st.markdown('<p style="text-align: center; color: #FF0000;">always at your service</p>', unsafe_allow_html=True)
 
 # Initialize session state
 if 'messages' not in st.session_state:
