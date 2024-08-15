@@ -1,4 +1,4 @@
-#!/home/em/code/cb_chat/.venv/bin/python
+#!/home/em/code/Chatbee/.venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys

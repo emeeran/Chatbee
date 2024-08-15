@@ -73,14 +73,17 @@ def process_user_input(prompt):
     # Save to database
     conn = init_db()
     c = conn.cursor()
-    c.execute("INSERT INTO messages VALUES (?, ?, ?)", ("user", prompt, time.time()))
-    c.execute("INSERT INTO messages VALUES (?, ?, ?)", ("assistant", full_response, time.time()))
+    c.executemany("INSERT INTO messages VALUES (?, ?, ?)", [
+        ("user", prompt, time.time()),
+        ("assistant", full_response, time.time())
+    ])
     conn.commit()
     conn.close()
 
+
 # Sidebar configuration
 with st.sidebar:
-    st.markdown("<h3 style='text-align: center;'>⚙️ Configurations</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center;'>⚙️ Configurations 🔧</h3>", unsafe_allow_html=True)
 
     model = st.sidebar.selectbox("Model", MODEL_OPTIONS, index=MODEL_OPTIONS.index(DEFAULT_MODEL))
     persona_key = st.sidebar.selectbox("Persona", list(PERSONAS_OPTIONS.keys()), index=list(PERSONAS_OPTIONS.keys()).index(DEFAULT_PERSONA))
